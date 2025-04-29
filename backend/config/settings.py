@@ -79,7 +79,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "trash_db",
+        "NAME": "waste_detection_db",
         "USER": "postgres",
         "PASSWORD": "17102004",
         "HOST": "localhost",
