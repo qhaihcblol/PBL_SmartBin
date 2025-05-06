@@ -2,14 +2,47 @@
 
 import { useState, useEffect } from "react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
-import { getWasteOverTime } from "@/lib/data"
+import { fetchWasteOverTime, fetchWasteTypes } from "@/lib/api"
+import type { WasteType } from "@/lib/api"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function WasteOverTime({ detailed = false }) {
   const [data, setData] = useState([])
+  const [wasteTypes, setWasteTypes] = useState<WasteType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setData(getWasteOverTime())
+    async function loadData() {
+      try {
+        setLoading(true)
+        const types = await fetchWasteTypes()
+        const timeData = await fetchWasteOverTime()
+        setWasteTypes(types)
+        setData(timeData)
+        setError(null)
+      } catch (error) {
+        console.error("Failed to load time series data:", error)
+        setError("Failed to load time series data. Please try again later.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
   }, [])
+
+  if (error) {
+    return <div className="text-red-500">{error}</div>
+  }
+
+  if (loading) {
+    return <Skeleton className="h-[300px] w-full rounded-xl" />
+  }
+
+  if (data.length === 0 || wasteTypes.length === 0) {
+    return <div className="text-center py-10">No data available</div>
+  }
 
   return (
     <div className="h-[300px] w-full">
@@ -28,11 +61,21 @@ export function WasteOverTime({ detailed = false }) {
           <YAxis />
           <Tooltip />
           <Legend />
-          <Line type="monotone" dataKey="plastic" stroke="#3B82F6" activeDot={{ r: 8 }} />
-          <Line type="monotone" dataKey="paper" stroke="#EAB308" />
-          <Line type="monotone" dataKey="metal" stroke="#6B7280" />
-          <Line type="monotone" dataKey="glass" stroke="#10B981" />
-          {detailed && <Line type="monotone" dataKey="total" stroke="#8B5CF6" strokeWidth={2} />}
+
+          {/* Dynamically create lines for each waste type */}
+          {wasteTypes.map((type) => (
+            <Line
+              key={type.id}
+              type="monotone"
+              dataKey={type.label}
+              name={type.display_name}
+              stroke={type.color}
+              activeDot={{ r: 5 }}
+            />
+          ))}
+
+          {/* Add total line if detailed view */}
+          {detailed && <Line type="monotone" dataKey="total" name="Total" stroke="#8B5CF6" strokeWidth={2} />}
         </LineChart>
       </ResponsiveContainer>
     </div>

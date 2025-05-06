@@ -1,4 +1,6 @@
-import { Suspense } from "react"
+"use client"
+
+import { useEffect, useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { WasteStats } from "@/components/dashboard/waste-stats"
@@ -7,16 +9,58 @@ import { WasteOverTime } from "@/components/dashboard/waste-over-time"
 import { CameraFeed } from "@/components/livestream/camera-feed"
 import { RecentDetections } from "@/components/recent-detections/detection-list"
 import { Skeleton } from "@/components/ui/skeleton"
+import { fetchWasteTypes } from "@/lib/api"
+
+// This is a client component wrapper for WasteStats that fetches the waste types first
+// to determine the grid columns
+function DynamicWasteStatsGrid() {
+  const [columnCount, setColumnCount] = useState(5) // Default to 5 columns
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchWasteTypeCount() {
+      try {
+        setLoading(true)
+        const types = await fetchWasteTypes()
+        // Add 1 for the "Total" card
+        setColumnCount(types.length + 1)
+      } catch (error) {
+        console.error("Failed to fetch waste types:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchWasteTypeCount()
+  }, [])
+
+  // Calculate grid columns based on number of waste types
+  // Limit to max 6 columns to prevent layout issues
+  const gridCols = Math.min(columnCount, 6)
+  const gridClass = `grid gap-4 md:grid-cols-3 lg:grid-cols-${gridCols}`
+
+  if (loading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+        {[...Array(5)].map((_, i) => (
+          <Skeleton key={i} className="h-[125px] w-full rounded-xl" />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className={gridClass}>
+      <WasteStats />
+    </div>
+  )
+}
 
 export default function Dashboard() {
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
-          <Suspense fallback={<Skeleton className="h-[125px] w-full rounded-xl" />}>
-            <WasteStats />
-          </Suspense>
-        </div>
+        <DynamicWasteStatsGrid />
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>

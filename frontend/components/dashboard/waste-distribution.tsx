@@ -14,11 +14,14 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts"
-import { getWasteDistribution, getWasteConfidence } from "@/lib/data"
+import { fetchWasteDistribution, fetchWasteConfidence } from "@/lib/api"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function WasteDistribution({ detailed = false, confidenceView = false }) {
   const [data, setData] = useState([])
   const [windowWidth, setWindowWidth] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setWindowWidth(window.innerWidth)
@@ -28,12 +31,39 @@ export function WasteDistribution({ detailed = false, confidenceView = false }) 
   }, [])
 
   useEffect(() => {
-    if (confidenceView) {
-      setData(getWasteConfidence())
-    } else {
-      setData(getWasteDistribution())
+    async function loadData() {
+      try {
+        setLoading(true)
+        if (confidenceView) {
+          const confidenceData = await fetchWasteConfidence()
+          setData(confidenceData)
+        } else {
+          const distributionData = await fetchWasteDistribution()
+          setData(distributionData)
+        }
+        setError(null)
+      } catch (error) {
+        console.error("Failed to load chart data:", error)
+        setError("Failed to load chart data. Please try again later.")
+      } finally {
+        setLoading(false)
+      }
     }
+
+    loadData()
   }, [confidenceView])
+
+  if (error) {
+    return <div className="text-red-500">{error}</div>
+  }
+
+  if (loading) {
+    return <Skeleton className="h-[300px] w-full rounded-xl" />
+  }
+
+  if (data.length === 0) {
+    return <div className="text-center py-10">No data available</div>
+  }
 
   if (confidenceView) {
     return (
@@ -56,7 +86,16 @@ export function WasteDistribution({ detailed = false, confidenceView = false }) 
               labelFormatter={(label) => `Waste Type: ${label}`}
             />
             <Legend />
-            <Bar dataKey="confidence" fill="#8884d8" name="Avg. Confidence %" />
+            <Bar
+              dataKey="confidence"
+              name="Avg. Confidence %"
+              // Use the color from each data point
+              fill="#8884d8"
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
