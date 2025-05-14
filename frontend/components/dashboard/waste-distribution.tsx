@@ -30,28 +30,46 @@ export function WasteDistribution({ detailed = false, confidenceView = false }) 
     return () => window.removeEventListener("resize", handleResize)
   }, [])
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true)
-        if (confidenceView) {
-          const confidenceData = await fetchWasteConfidence()
-          setData(confidenceData)
-        } else {
-          const distributionData = await fetchWasteDistribution()
-          setData(distributionData)
-        }
-        setError(null)
-      } catch (error) {
-        console.error("Failed to load chart data:", error)
-        setError("Failed to load chart data. Please try again later.")
-      } finally {
-        setLoading(false)
+  // Function to load data
+  const loadData = async () => {
+    try {
+      let newData
+      if (confidenceView) {
+        newData = await fetchWasteConfidence()
+      } else {
+        newData = await fetchWasteDistribution()
       }
-    }
 
+      // Check if data has changed before updating state
+      const hasDataChanged = JSON.stringify(newData) !== JSON.stringify(data)
+
+      if (hasDataChanged) {
+        setData(newData)
+      }
+
+      setError(null)
+      if (loading) setLoading(false)
+    } catch (error) {
+      console.error("Failed to load chart data:", error)
+      setError("Failed to load chart data. Please try again later.")
+      if (loading) setLoading(false)
+    }
+  }
+
+  // Initial data load
+  useEffect(() => {
     loadData()
   }, [confidenceView])
+
+  // Set up polling every 5 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      loadData()
+    }, 5000)
+
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId)
+  }, [confidenceView, data]) // Dependencies ensure we compare with latest state
 
   if (error) {
     return <div className="text-red-500">{error}</div>

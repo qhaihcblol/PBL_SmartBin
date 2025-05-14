@@ -22,25 +22,47 @@ export function WasteStats() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true)
-        const types = await fetchWasteTypes()
-        const statsData = await fetchWasteStats()
-        setWasteTypes(types)
-        setStats(statsData)
-        setError(null)
-      } catch (error) {
-        console.error("Failed to load waste stats:", error)
-        setError("Failed to load waste statistics. Please try again later.")
-      } finally {
-        setLoading(false)
-      }
-    }
+  // Function to load data
+  const loadData = async () => {
+    try {
+      const types = await fetchWasteTypes()
+      const statsData = await fetchWasteStats()
 
+      // Check if data has changed before updating state
+      const hasTypesChanged = JSON.stringify(types) !== JSON.stringify(wasteTypes)
+      const hasStatsChanged = JSON.stringify(statsData) !== JSON.stringify(stats)
+
+      if (hasTypesChanged) {
+        setWasteTypes(types)
+      }
+
+      if (hasStatsChanged) {
+        setStats(statsData)
+      }
+
+      setError(null)
+    } catch (error) {
+      console.error("Failed to load waste stats:", error)
+      setError("Failed to load waste statistics. Please try again later.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Initial data load
+  useEffect(() => {
     loadData()
   }, [])
+
+  // Set up polling every 5 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      loadData()
+    }, 5000)
+
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId)
+  }, [wasteTypes, stats]) // Dependencies ensure we compare with latest state
 
   // Get an icon for a waste type
   const getIconForType = (type: WasteType) => {

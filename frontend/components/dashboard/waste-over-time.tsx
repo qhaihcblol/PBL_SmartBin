@@ -12,25 +12,47 @@ export function WasteOverTime({ detailed = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true)
-        const types = await fetchWasteTypes()
-        const timeData = await fetchWasteOverTime()
-        setWasteTypes(types)
-        setData(timeData)
-        setError(null)
-      } catch (error) {
-        console.error("Failed to load time series data:", error)
-        setError("Failed to load time series data. Please try again later.")
-      } finally {
-        setLoading(false)
-      }
-    }
+  // Function to load data
+  const loadData = async () => {
+    try {
+      const types = await fetchWasteTypes()
+      const timeData = await fetchWasteOverTime()
 
+      // Check if data has changed before updating state
+      const hasTypesChanged = JSON.stringify(types) !== JSON.stringify(wasteTypes)
+      const hasTimeDataChanged = JSON.stringify(timeData) !== JSON.stringify(data)
+
+      if (hasTypesChanged) {
+        setWasteTypes(types)
+      }
+
+      if (hasTimeDataChanged) {
+        setData(timeData)
+      }
+
+      setError(null)
+      if (loading) setLoading(false)
+    } catch (error) {
+      console.error("Failed to load time series data:", error)
+      setError("Failed to load time series data. Please try again later.")
+      if (loading) setLoading(false)
+    }
+  }
+
+  // Initial data load
+  useEffect(() => {
     loadData()
   }, [])
+
+  // Set up polling every 5 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      loadData()
+    }, 5000)
+
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId)
+  }, [wasteTypes, data]) // Dependencies ensure we compare with latest state
 
   if (error) {
     return <div className="text-red-500">{error}</div>
