@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import { fetchRecentDetections, getWasteTypesMap } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { WasteType } from "@/lib/api"
 import { Skeleton } from "@/components/ui/skeleton"
+import type { WasteType } from "@/lib/api"
+import { fetchRecentDetections, getWasteTypesMap, MEDIA_BASE_URL } from "@/lib/api"
+import Image from "next/image"
+import { useEffect, useState } from "react"
 
 export function RecentDetections({ limit = 5 }) {
   const [detections, setDetections] = useState([])
@@ -96,15 +96,14 @@ export function RecentDetections({ limit = 5 }) {
     <ScrollArea className="h-[300px] pr-4">
       <div className="space-y-4">
         {detections.map((detection) => (
-          <div key={detection.id} className="flex items-start gap-4">
-            <div className="relative h-16 w-16 overflow-hidden rounded-md">
-              <Image
-                src={detection.image || "/placeholder.svg"}
-                alt={`${detection.type} waste`}
-                fill
-                className="object-cover"
-              />
-            </div>
+          <div key={detection.id} className="flex items-start gap-4">            <div className="relative h-16 w-16 overflow-hidden rounded-md">
+            <Image
+              src={detection.image?.startsWith('http') ? detection.image : detection.image?.startsWith('/') ? detection.image : `${MEDIA_BASE_URL}${detection.image?.startsWith('/') ? '' : '/'}${detection.image}` || "/placeholder.svg"}
+              alt={`${detection.type} waste`}
+              fill
+              className="object-cover"
+            />
+          </div>
             <div className="flex-1 space-y-1">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">{getTypeDisplayName(detection.type)} Waste</p>

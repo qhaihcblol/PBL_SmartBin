@@ -1,4 +1,7 @@
-// This file will connect to your backend API
+// This file connects to your backend API
+
+const API_BASE_URL = 'http://localhost:8000/api'
+export const MEDIA_BASE_URL = 'http://localhost:8000'
 
 // Define the waste type interface
 export interface WasteType {
@@ -21,49 +24,60 @@ export interface WasteRecord {
 // Fetch waste types from the backend
 export async function fetchWasteTypes(): Promise<WasteType[]> {
   try {
-    // In production, replace with actual API call:
-    // const response = await fetch('/api/waste-types');
-    // return response.json();
-
-    // For development/demo purposes only
+    const response = await fetch(`${API_BASE_URL}/waste-types/`)
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`)
+    }
+    const data = await response.json()
+    return data.results || data
+  } catch (error) {
+    console.error("Error fetching waste types:", error)
+    
+    // Fallback data for development or network issues
     return [
       { id: 1, label: "plastic", display_name: "Plastic", color: "#3B82F6" },
       { id: 2, label: "paper", display_name: "Paper", color: "#EAB308" },
       { id: 3, label: "metal", display_name: "Metal", color: "#6B7280" },
       { id: 4, label: "glass", display_name: "Glass", color: "#10B981" },
-      // You can easily add more waste types here
-      // { id: 5, label: "organic", display_name: "Organic", color: "#8B5CF6" },
     ]
-  } catch (error) {
-    console.error("Error fetching waste types:", error)
-    throw error
   }
 }
 
 // Fetch waste records from the backend
 export async function fetchWasteRecords(limit?: number): Promise<WasteRecord[]> {
   try {
-    // In production, replace with actual API call:
-    // const response = await fetch(`/api/waste-records?limit=${limit || 100}`);
-    // return response.json();
-
-    // For development/demo purposes only
-    const wasteTypes = await fetchWasteTypes()
-    return generateMockWasteRecords(wasteTypes, limit || 100)
+    const url = new URL(`${API_BASE_URL}/waste-records/`)
+    if (limit) {
+      url.searchParams.append('limit', limit.toString())
+    }
+    
+    const response = await fetch(url.toString())
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`)
+    }
+    const data = await response.json()
+    return data.results || data
   } catch (error) {
     console.error("Error fetching waste records:", error)
-    throw error
+    
+    // Fallback to mock data for development
+    const wasteTypes = await fetchWasteTypes()
+    return generateMockWasteRecords(wasteTypes, limit || 100)
   }
 }
 
 // Fetch waste statistics from the backend
 export async function fetchWasteStats(): Promise<Record<string, number>> {
   try {
-    // In production, replace with actual API call:
-    // const response = await fetch('/api/waste-stats');
-    // return response.json();
-
-    // For development/demo purposes only
+    const response = await fetch(`${API_BASE_URL}/waste-stats/`)
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`)
+    }
+    return await response.json()
+  } catch (error) {
+    console.error("Error fetching waste stats:", error)
+    
+    // Fallback to calculating from mock data
     const wasteTypes = await fetchWasteTypes()
     const wasteRecords = await fetchWasteRecords()
 
@@ -78,20 +92,21 @@ export async function fetchWasteStats(): Promise<Record<string, number>> {
     })
 
     return stats
-  } catch (error) {
-    console.error("Error fetching waste stats:", error)
-    throw error
   }
 }
 
 // Fetch waste distribution for charts
 export async function fetchWasteDistribution() {
   try {
-    // In production, replace with actual API call:
-    // const response = await fetch('/api/waste-distribution');
-    // return response.json();
-
-    // For development/demo purposes only
+    const response = await fetch(`${API_BASE_URL}/waste-distribution/`)
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`)
+    }
+    return await response.json()
+  } catch (error) {
+    console.error("Error fetching waste distribution:", error)
+    
+    // Fallback to calculating from mock data
     const wasteTypes = await fetchWasteTypes()
     const stats = await fetchWasteStats()
 
@@ -104,20 +119,21 @@ export async function fetchWasteDistribution() {
         percentage: Math.round((count / stats.totalItems) * 100),
       }
     })
-  } catch (error) {
-    console.error("Error fetching waste distribution:", error)
-    throw error
   }
 }
 
 // Fetch waste confidence data
 export async function fetchWasteConfidence() {
   try {
-    // In production, replace with actual API call:
-    // const response = await fetch('/api/waste-confidence');
-    // return response.json();
-
-    // For development/demo purposes only
+    const response = await fetch(`${API_BASE_URL}/waste-confidence/`)
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`)
+    }
+    return await response.json()
+  } catch (error) {
+    console.error("Error fetching waste confidence:", error)
+    
+    // Fallback to calculating from mock data
     const wasteTypes = await fetchWasteTypes()
     const wasteRecords = await fetchWasteRecords()
 
@@ -132,20 +148,21 @@ export async function fetchWasteConfidence() {
         color: type.color,
       }
     })
-  } catch (error) {
-    console.error("Error fetching waste confidence:", error)
-    throw error
   }
 }
 
 // Fetch waste over time data
 export async function fetchWasteOverTime() {
   try {
-    // In production, replace with actual API call:
-    // const response = await fetch('/api/waste-over-time');
-    // return response.json();
-
-    // For development/demo purposes only
+    const response = await fetch(`${API_BASE_URL}/waste-over-time/`)
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`)
+    }
+    return await response.json()
+  } catch (error) {
+    console.error("Error fetching waste over time:", error)
+    
+    // Fallback to generating mock data
     const wasteTypes = await fetchWasteTypes()
     const wasteRecords = await fetchWasteRecords()
     const result = []
@@ -183,25 +200,23 @@ export async function fetchWasteOverTime() {
     }
 
     return result
-  } catch (error) {
-    console.error("Error fetching waste over time:", error)
-    throw error
   }
 }
 
 // Fetch recent detections
 export async function fetchRecentDetections(limit = 5) {
   try {
-    // In production, replace with actual API call:
-    // const response = await fetch(`/api/recent-detections?limit=${limit}`);
-    // return response.json();
-
-    // For development/demo purposes only
-    const wasteRecords = await fetchWasteRecords(100)
-    return wasteRecords.slice(0, limit)
+    const response = await fetch(`${API_BASE_URL}/recent-detections/?limit=${limit}`)
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`)
+    }
+    return await response.json()
   } catch (error) {
     console.error("Error fetching recent detections:", error)
-    throw error
+    
+    // Fallback to fetching from mock data
+    const wasteRecords = await fetchWasteRecords(100)
+    return wasteRecords.slice(0, limit)
   }
 }
 
@@ -233,28 +248,25 @@ export async function getWasteTypesMap(): Promise<Record<string, WasteType>> {
   }
 }
 
-// Helper function to generate mock waste records (for development only)
+// Helper function to generate mock waste records (for development/fallback only)
 function generateMockWasteRecords(wasteTypes: WasteType[], count: number): WasteRecord[] {
   const records: WasteRecord[] = []
   const now = new Date()
 
   for (let i = 0; i < count; i++) {
     const typeIndex = Math.floor(Math.random() * wasteTypes.length)
-    const wasteType = wasteTypes[typeIndex]
-
-    // Generate a random date within the last 7 days
+    const wasteType = wasteTypes[typeIndex]    // Generate a random date within the last 7 days
     const date = new Date(now)
     date.setDate(date.getDate() - Math.floor(Math.random() * 7))
     date.setHours(Math.floor(Math.random() * 24))
     date.setMinutes(Math.floor(Math.random() * 60))
-
-    records.push({
+      records.push({
       id: i + 1,
       type_id: wasteType.id,
       type: wasteType.label,
       confidence: Math.floor(Math.random() * 30) + 70, // 70-99%
       timestamp: date.toISOString(),
-      image: `/placeholder.svg?height=200&width=200&text=${wasteType.label}`,
+      image: `/media/waste_images/${wasteType.label}_${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}${String(date.getSeconds()).padStart(2,'0')}.png`,
     })
   }
 
