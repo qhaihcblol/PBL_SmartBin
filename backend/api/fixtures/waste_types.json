@@ -1,0 +1,39 @@
+
+[
+  {
+    "model": "api.wastetype",
+    "pk": 1,
+    "fields": {
+      "label": "plastic",
+      "display_name": "Plastic",
+      "color": "#3B82F6"
+    }
+  },
+  {
+    "model": "api.wastetype",
+    "pk": 2,
+    "fields": {
+      "label": "paper",
+      "display_name": "Paper",
+      "color": "#EAB308"
+    }
+  },
+  {
+    "model": "api.wastetype",
+    "pk": 3,
+    "fields": {
+      "label": "metal",
+      "display_name": "Metal",
+      "color": "#6B7280"
+    }
+  },
+  {
+    "model": "api.wastetype",
+    "pk": 4,
+    "fields": {
+      "label": "glass",
+      "display_name": "Glass",
+      "color": "#10B981"
+    }
+  }
+]

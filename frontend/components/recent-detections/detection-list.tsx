@@ -14,47 +14,25 @@ export function RecentDetections({ limit = 5 }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Function to load data
-  const loadData = async () => {
-    try {
-      const typesMap = await getWasteTypesMap()
-      const detectionsData = await fetchRecentDetections(limit)
-
-      // Check if data has changed before updating state
-      const hasTypesMapChanged = JSON.stringify(typesMap) !== JSON.stringify(wasteTypesMap)
-      const hasDetectionsChanged = JSON.stringify(detectionsData) !== JSON.stringify(detections)
-
-      if (hasTypesMapChanged) {
-        setWasteTypesMap(typesMap)
-      }
-
-      if (hasDetectionsChanged) {
-        setDetections(detectionsData)
-      }
-
-      setError(null)
-      if (loading) setLoading(false)
-    } catch (error) {
-      console.error("Failed to load recent detections:", error)
-      setError("Failed to load recent detections. Please try again later.")
-      if (loading) setLoading(false)
-    }
-  }
-
-  // Initial data load
   useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true)
+        const typesMap = await getWasteTypesMap()
+        const detectionsData = await fetchRecentDetections(limit)
+        setWasteTypesMap(typesMap)
+        setDetections(detectionsData)
+        setError(null)
+      } catch (error) {
+        console.error("Failed to load recent detections:", error)
+        setError("Failed to load recent detections. Please try again later.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
     loadData()
   }, [limit])
-
-  // Set up polling every 5 seconds
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      loadData()
-    }, 5000)
-
-    // Clean up interval on component unmount
-    return () => clearInterval(intervalId)
-  }, [limit, detections, wasteTypesMap]) // Dependencies ensure we compare with latest state
 
   // Get the color for a waste type
   const getTypeColor = (typeLabel: string) => {
