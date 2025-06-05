@@ -15,4 +15,5 @@ urlpatterns = [
     path("api/waste-confidence/", views.waste_confidence, name="waste-confidence"),
     path("api/waste-over-time/", views.waste_over_time, name="waste-over-time"),
     path("api/recent-detections/", views.recent_detections, name="recent-detections"),
+    
 ]

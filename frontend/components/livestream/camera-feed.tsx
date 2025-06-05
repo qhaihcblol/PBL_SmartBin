@@ -19,7 +19,7 @@ export function CameraFeed() {
         <div className="h-full w-full bg-black">
           <img
             ref={videoRef}
-            src="/placeholder.svg?height=720&width=1280"
+            src="http://172.20.10.2:5000/video_feed" width="640"
             alt="Camera Feed"
             className="h-full w-full object-cover"
           />

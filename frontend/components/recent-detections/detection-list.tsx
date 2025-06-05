@@ -98,7 +98,12 @@ export function RecentDetections({ limit = 5 }) {
         {detections.map((detection) => (
           <div key={detection.id} className="flex items-start gap-4">            <div className="relative h-16 w-16 overflow-hidden rounded-md">
             <Image
-              src={detection.image?.startsWith('http') ? detection.image : detection.image?.startsWith('/') ? detection.image : `${MEDIA_BASE_URL}${detection.image?.startsWith('/') ? '' : '/'}${detection.image}` || "/placeholder.svg"}
+              src={detection.image ? 
+                (detection.image.startsWith('http') ? 
+                  detection.image : 
+                  `${MEDIA_BASE_URL}${detection.image.startsWith('/') ? '' : '/'}${detection.image}`
+                ) : 
+                "/placeholder.svg"}
               alt={`${detection.type} waste`}
               fill
               className="object-cover"
