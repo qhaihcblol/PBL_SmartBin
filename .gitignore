@@ -1,0 +1,5 @@
+.pio
+.vscode/
+.vscode/*.json
+.vscode/*.db*
+model/garbage-dataset.zip

@@ -1,0 +1,70 @@
+
+PBL5 - HỆ THỐNG TỰ ĐỘNG KHỞI ĐỘNG & GHI LOG
+
+==========================================
+1. TẠO FILE start_system.sh
+------------------------------------------
+nano /home/HHH/PBL5/start_system.sh
+
+# Nội dung file:
+#!/bin/bash
+cd /home/HHH/PBL5/rasberry
+source ../venv/bin/activate
+python3 -u main.py 2>&1 | tee -a /home/HHH/PBL5/log.txt
+
+# Cấp quyền thực thi:
+chmod +x /home/HHH/PBL5/start_system.sh
+
+
+==========================================
+2. TẠO FILE DỊCH VỤ systemd
+------------------------------------------
+sudo nano /etc/systemd/system/pbl5.service
+
+# Nội dung file:
+[Unit]
+Description=PBL5 Trash Detection Auto Start
+After=network.target
+
+[Service]
+ExecStart=/home/HHH/PBL5/start_system.sh
+Restart=always
+User=HHH
+WorkingDirectory=/home/HHH/PBL5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
+
+==========================================
+3. KÍCH HOẠT VÀ CHẠY DỊCH VỤ
+------------------------------------------
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable pbl5.service
+sudo systemctl start pbl5.service
+
+
+==========================================
+4. CÁC LỆNH QUẢN LÝ DỊCH VỤ
+------------------------------------------
+# Kiểm tra trạng thái:
+sudo systemctl status pbl5.service
+
+# Tắt dịch vụ:
+sudo systemctl stop pbl5.service
+
+# Khởi động lại:
+sudo systemctl restart pbl5.service
+
+
+==========================================
+5. XEM LOG
+------------------------------------------
+# Log theo thời gian thực từ systemd:
+journalctl -u pbl5.service -f
+
+# Log theo thời gian thực từ file log.txt:
+tail -f /home/HHH/PBL5/log.txt
