@@ -1,5 +1,3 @@
-# api/serializers.py
-
 from rest_framework import serializers
 from .models import WasteType, WasteRecord
 
@@ -11,30 +9,33 @@ class WasteTypeSerializer(serializers.ModelSerializer):
 
 
 class WasteRecordSerializer(serializers.ModelSerializer):
-    type = serializers.CharField(source="type.label", read_only=True)
-    type_id = serializers.IntegerField(source="type.id", read_only=True)
+    type_id = serializers.IntegerField(source="type.id")
+    type = serializers.CharField(source="type.label")
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = WasteRecord
         fields = ["id", "type_id", "type", "confidence", "timestamp", "image"]
         read_only_fields = ["id", "timestamp"]
 
+    def get_image(self, obj):
+        if obj.image:
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+
+
+class WasteRecordCreateSerializer(serializers.ModelSerializer):
+    type_id = serializers.IntegerField()
+
+    class Meta:
+        model = WasteRecord
+        fields = ["type_id", "confidence", "image"]
+
     def create(self, validated_data):
-        return WasteRecord.objects.create(**validated_data)
-
-
-class WasteRecordCreateSerializer(serializers.Serializer):
-    type_label = serializers.CharField()
-    confidence = serializers.FloatField()
-    image = serializers.ImageField(required=False)
-
-    def create(self, validated_data):
-        type_label = validated_data.pop("type_label")
-        try:
-            waste_type = WasteType.objects.get(label=type_label)
-        except WasteType.DoesNotExist:
-            raise serializers.ValidationError(
-                f"Waste type with label '{type_label}' does not exist"
-            )
-
-        return WasteRecord.objects.create(type=waste_type, **validated_data)
+        type_id = validated_data.pop("type_id")
+        waste_type = WasteType.objects.get(id=type_id)
+        waste_record = WasteRecord.objects.create(type=waste_type, **validated_data)
+        return waste_record

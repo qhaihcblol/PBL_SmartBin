@@ -1,19 +1,10 @@
 from django.db import models
-import os
-import uuid
-
-
-def waste_image_path(instance, filename):
-    """Generate a unique path for waste images"""
-    ext = filename.split(".")[-1]
-    filename = f"{uuid.uuid4()}.{ext}"
-    return os.path.join("waste_images", filename)
 
 
 class WasteType(models.Model):
     label = models.CharField(max_length=50, unique=True)
     display_name = models.CharField(max_length=100)
-    color = models.CharField(max_length=20)
+    color = models.CharField(max_length=9)  # For hex color codes like #RRGGBB
 
     def __str__(self):
         return self.display_name
@@ -26,12 +17,14 @@ class WasteRecord(models.Model):
     type = models.ForeignKey(
         WasteType, on_delete=models.CASCADE, related_name="records"
     )
-    confidence = models.FloatField()
+    confidence = models.FloatField()  # Store as float for better precision
     timestamp = models.DateTimeField(auto_now_add=True)
-    image = models.ImageField(upload_to=waste_image_path, null=True, blank=True)
+    image = models.ImageField(upload_to="waste_images/")
 
     def __str__(self):
-        return f"{self.type.display_name} - {self.timestamp}"
+        return (
+            f"{self.type.display_name} - {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
 
     class Meta:
-        ordering = ["-timestamp"]
+        ordering = ["-timestamp"]  # Newest first

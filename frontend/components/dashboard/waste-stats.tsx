@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { fetchWasteStats, fetchWasteTypes } from "@/lib/api"
-import { Trash2, FileText, FlaskRoundIcon as Flask, Droplet, Cog, Package } from "lucide-react"
-import type { WasteType } from "@/lib/api"
 import { Skeleton } from "@/components/ui/skeleton"
+import type { WasteType } from "@/lib/api"
+import { fetchWasteStats, fetchWasteTypes } from "@/lib/api"
+import { Cog, Droplet, FileText, FlaskRoundIcon as Flask, Package, Trash2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 // Map of default icons to use for waste types if not specified
 const DEFAULT_ICONS: Record<string, any> = {
@@ -22,24 +22,71 @@ export function WasteStats() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function loadData() {
-      try {
+  // Ref to store the current data for comparison
+  const previousStatsRef = useRef<Record<string, number>>({ totalItems: 0 })
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Function to check if stats have changed
+  const hasStatsChanged = (newStats: Record<string, number>, oldStats: Record<string, number>) => {
+    const newKeys = Object.keys(newStats)
+    const oldKeys = Object.keys(oldStats)
+
+    if (newKeys.length !== oldKeys.length) return true
+
+    return newKeys.some(key => newStats[key] !== oldStats[key])
+  }
+
+  // Function to load data
+  const loadData = async (isInitial = false) => {
+    try {
+      if (isInitial) {
         setLoading(true)
-        const types = await fetchWasteTypes()
-        const statsData = await fetchWasteStats()
+      }
+
+      const types = await fetchWasteTypes()
+      const statsData = await fetchWasteStats()
+
+      // Check if stats have actually changed
+      if (hasStatsChanged(statsData, previousStatsRef.current)) {
         setWasteTypes(types)
         setStats(statsData)
-        setError(null)
-      } catch (error) {
-        console.error("Failed to load waste stats:", error)
-        setError("Failed to load waste statistics. Please try again later.")
-      } finally {
+        previousStatsRef.current = statsData
+      }
+
+      setError(null)
+    } catch (error) {
+      console.error("Failed to load waste stats:", error)
+      setError("Failed to load waste statistics. Please try again later.")
+    } finally {
+      if (isInitial) {
         setLoading(false)
       }
     }
+  }
 
-    loadData()
+  // Initial load
+  useEffect(() => {
+    loadData(true)
+  }, [])
+
+  // Setup polling
+  useEffect(() => {
+    // Clear existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+    }
+
+    // Start polling every 5 seconds
+    intervalRef.current = setInterval(() => {
+      loadData(false)
+    }, 5000)
+
+    // Cleanup on unmount or dependency change
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
   }, [])
 
   // Get an icon for a waste type
@@ -49,7 +96,11 @@ export function WasteStats() {
   }
 
   if (error) {
-    return <div className="text-red-500">{error}</div>
+    return (
+      <div className="col-span-full text-red-500 text-center py-4">
+        <p>{error}</p>
+      </div>
+    )
   }
 
   if (loading) {

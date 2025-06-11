@@ -8,6 +8,7 @@ import { WasteDistribution } from "@/components/dashboard/waste-distribution"
 import { WasteOverTime } from "@/components/dashboard/waste-over-time"
 import { CameraFeed } from "@/components/livestream/camera-feed"
 import { RecentDetections } from "@/components/recent-detections/detection-list"
+import { WasteHistory } from "@/components/history/waste-history"
 import { Skeleton } from "@/components/ui/skeleton"
 import { fetchWasteTypes } from "@/lib/api"
 
@@ -62,11 +63,13 @@ export default function Dashboard() {
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <DynamicWasteStatsGrid />
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="livestream">Livestream</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
           </TabsList>
+
           <TabsContent value="overview" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
               <Card className="col-span-4">
@@ -88,32 +91,29 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
-              <Card className="col-span-1">
-                <CardHeader>
-                  <CardTitle>Waste Over Time</CardTitle>
-                  <CardDescription>Tracking waste types over the past 7 days</CardDescription>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <WasteOverTime />
-                </CardContent>
-              </Card>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Waste Over Time</CardTitle>
+                <CardDescription>Tracking waste types over the past 7 days</CardDescription>
+              </CardHeader>
+              <CardContent className="pl-2">
+                <WasteOverTime />
+              </CardContent>
+            </Card>
           </TabsContent>
+
           <TabsContent value="analytics" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
-              <Card className="col-span-1">
-                <CardHeader>
-                  <CardTitle>Waste Over Time</CardTitle>
-                  <CardDescription>Detailed analysis of waste collection over time</CardDescription>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <WasteOverTime detailed />
-                </CardContent>
-              </Card>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-              <Card className="col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle>Waste Over Time</CardTitle>
+                <CardDescription>Detailed analysis of waste collection over time</CardDescription>
+              </CardHeader>
+              <CardContent className="pl-2">
+                <WasteOverTime detailed />
+              </CardContent>
+            </Card>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
                 <CardHeader>
                   <CardTitle>Waste Distribution</CardTitle>
                   <CardDescription>Detailed breakdown of waste types</CardDescription>
@@ -122,7 +122,7 @@ export default function Dashboard() {
                   <WasteDistribution detailed />
                 </CardContent>
               </Card>
-              <Card className="col-span-1">
+              <Card>
                 <CardHeader>
                   <CardTitle>Detection Confidence</CardTitle>
                   <CardDescription>Average confidence level by waste type</CardDescription>
@@ -133,6 +133,7 @@ export default function Dashboard() {
               </Card>
             </div>
           </TabsContent>
+
           <TabsContent value="livestream" className="space-y-4">
             <Card>
               <CardHeader>
@@ -152,6 +153,10 @@ export default function Dashboard() {
                 <RecentDetections limit={10} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4">
+            <WasteHistory />
           </TabsContent>
         </Tabs>
       </main>

@@ -1,113 +1,93 @@
-# api/views.py
-
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from rest_framework.decorators import api_view, parser_classes
-from rest_framework.parsers import MultiPartParser, FormParser
-from django.db.models import Count, Avg, F
-from django.db.models.functions import TruncDay
+from django.shortcuts import render
+from django.db.models import Count, Avg
 from django.utils import timezone
 from datetime import timedelta
+from rest_framework import viewsets, status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from .models import WasteType, WasteRecord
 from .serializers import (
     WasteTypeSerializer,
     WasteRecordSerializer,
     WasteRecordCreateSerializer,
 )
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-import json
-import logging
-
-logger = logging.getLogger(__name__)
+from .pagination import CustomPageNumberPagination
 
 
 class WasteTypeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = WasteType.objects.all()
     serializer_class = WasteTypeSerializer
+    pagination_class = None  # Disable pagination for waste types
 
 
 class WasteRecordViewSet(viewsets.ModelViewSet):
-    serializer_class = WasteRecordSerializer
-    parser_classes = [MultiPartParser, FormParser]
-
-    def get_queryset(self):
-        queryset = WasteRecord.objects.all()
-        limit = self.request.query_params.get("limit")
-        if limit:
-            try:
-                limit = int(limit)
-                queryset = queryset[:limit]
-            except ValueError:
-                pass
-        return queryset
+    queryset = WasteRecord.objects.all()
+    pagination_class = CustomPageNumberPagination
 
     def get_serializer_class(self):
         if self.action == "create":
             return WasteRecordCreateSerializer
         return WasteRecordSerializer
 
-    def create(self, request, *args, **kwargs):
-        logger.info(f"Received waste record creation request: {request.data}")
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            record = serializer.save()
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
 
-            # Serialize the record for the response and WebSocket
-            record_serializer = WasteRecordSerializer(record)
-            record_data = record_serializer.data
+    def get_queryset(self):
+        queryset = WasteRecord.objects.all().order_by("-timestamp")
 
-            # Fix image URL to include host
-            if record.image:
-                # Get the host from the request
-                host = request.get_host()
-                scheme = "https" if request.is_secure() else "http"
-                record_data["image"] = f"{scheme}://{host}{record_data['image']}"
+        # Support for waste_types filtering
+        waste_types = self.request.query_params.get("waste_types")
+        if waste_types:
+            waste_type_list = waste_types.split(",")
+            queryset = queryset.filter(type__label__in=waste_type_list)
 
-            logger.info(f"Created waste record: {record_data}")
+        # Support for date range filtering
+        start_date = self.request.query_params.get("start_date")
+        if start_date:
+            queryset = queryset.filter(timestamp__date__gte=start_date)
 
-            # Send WebSocket update
-            try:
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    "waste_updates", {"type": "waste_update", "data": record_data}
-                )
-                logger.info("WebSocket update sent successfully")
-            except Exception as e:
-                logger.error(f"Error sending WebSocket update: {e}")
+        end_date = self.request.query_params.get("end_date")
+        if end_date:
+            queryset = queryset.filter(timestamp__date__lte=end_date)
 
-            return Response(record_data, status=status.HTTP_201_CREATED)
-
-        logger.error(f"Invalid data for waste record: {serializer.errors}")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return queryset
 
 
 @api_view(["GET"])
 def waste_stats(request):
-    """Get waste statistics"""
-    # Tính tổng số records
+    """
+    Get statistics about waste collection:
+    - Total items
+    - Count for each waste type
+    """
     total_items = WasteRecord.objects.count()
 
-    # Get counts for each waste type sử dụng annotate để tối ưu truy vấn
+    # Get counts for each waste type
+    waste_types = WasteType.objects.all()
     stats = {"totalItems": total_items}
 
-    waste_types = WasteType.objects.annotate(count=Count('records')).all()
     for waste_type in waste_types:
-        stats[f"{waste_type.label}Count"] = waste_type.count
+        type_count = WasteRecord.objects.filter(type=waste_type).count()
+        stats[f"{waste_type.label}Count"] = type_count
 
     return Response(stats)
 
 
 @api_view(["GET"])
 def waste_distribution(request):
-    """Get waste distribution data for charts"""
-    # Sử dụng annotate để tối ưu số lượng truy vấn
-    waste_types = WasteType.objects.annotate(count=Count('records')).all()
+    """
+    Get distribution of waste types for charts
+    """
     total_items = WasteRecord.objects.count()
+    waste_types = WasteType.objects.all()
 
     distribution = []
     for waste_type in waste_types:
-        count = waste_type.count
+        count = WasteRecord.objects.filter(type=waste_type).count()
         percentage = round((count / total_items) * 100) if total_items > 0 else 0
 
         distribution.append(
@@ -124,24 +104,20 @@ def waste_distribution(request):
 
 @api_view(["GET"])
 def waste_confidence(request):
-    """Get average confidence by waste type"""
-    # Sử dụng annotate để tối ưu truy vấn, lấy confidence trung bình trong một lần
-    waste_types = (
-        WasteType.objects.annotate(
-            avg_confidence=Avg('records__confidence')
-        ).all()
-    )
+    """
+    Get average confidence scores for each waste type
+    """
+    waste_types = WasteType.objects.all()
 
     confidence_data = []
     for waste_type in waste_types:
-        # Xử lý giá trị None nếu không có records
-        avg_confidence = waste_type.avg_confidence
-        avg_confidence = round(avg_confidence) if avg_confidence else 0
+        records = WasteRecord.objects.filter(type=waste_type)
+        avg_confidence = records.aggregate(avg=Avg("confidence"))["avg"] or 0
 
         confidence_data.append(
             {
                 "name": waste_type.display_name,
-                "confidence": avg_confidence,
+                "confidence": round(avg_confidence),
                 "color": waste_type.color,
             }
         )
@@ -149,51 +125,52 @@ def waste_confidence(request):
     return Response(confidence_data)
 
 
-from django.db.models import Count, Avg, F
-from django.db.models.functions import TruncDay
-
 @api_view(["GET"])
 def waste_over_time(request):
-    """Get waste data over time (last 7 days)"""
-    end_date = timezone.now()
-    start_date = end_date - timedelta(days=6)
-
+    """
+    Get waste records grouped by day for the last 7 days
+    """
     waste_types = WasteType.objects.all()
-    waste_type_labels = {wt.id: wt.label for wt in waste_types}
-    
-    # Truy vấn dữ liệu gộp theo ngày và loại waste
-    # Sử dụng annotate để giảm số lượng truy vấn
-    daily_records = (
-        WasteRecord.objects.filter(timestamp__gte=start_date, timestamp__lte=end_date)
-        .annotate(day=TruncDay('timestamp'))
-        .values('day', 'type')
-        .annotate(count=Count('id'))
-        .order_by('day', 'type')
+    result = []
+
+    # Generate data for the last 7 days
+    today = timezone.now().date()
+
+    for i in range(6, -1, -1):
+        date = today - timedelta(days=i)
+        next_date = date + timedelta(days=1)
+
+        # Get records for this day
+        day_records = WasteRecord.objects.filter(timestamp__date=date)
+
+        # Create data point with dynamic waste type counts
+        data_point = {"date": date.strftime("%b %d"), "total": 0}  # Format: "May 14"
+
+        for waste_type in waste_types:
+            type_count = day_records.filter(type=waste_type).count()
+            data_point[waste_type.label] = type_count
+            data_point["total"] += type_count
+
+        result.append(data_point)
+
+    return Response(result)
+
+
+@api_view(["GET"])
+def recent_detections(request):
+    """
+    Get the most recent waste detections
+    """
+    limit = request.query_params.get("limit", 5)
+    try:
+        limit = int(limit)
+    except ValueError:
+        limit = 5
+
+    recent_records = WasteRecord.objects.all().order_by("-timestamp")[:limit]
+    serializer = WasteRecordSerializer(
+        recent_records, many=True, context={"request": request}
     )
 
-    # Chuẩn bị cấu trúc kết quả
-    date_map = {}
-    for i in range(7):
-        day = start_date + timedelta(days=i)
-        formatted_date = day.strftime("%b %d")
-        date_map[day.date()] = {"date": formatted_date, "total": 0}
-        
-        # Khởi tạo count cho mỗi loại waste là 0
-        for waste_type in waste_types:
-            date_map[day.date()][waste_type.label] = 0
-    
-    # Gộp dữ liệu từ truy vấn
-    for record in daily_records:
-        day = record['day'].date()
-        waste_type_id = record['type']
-        count = record['count']
-        
-        if day in date_map:
-            waste_label = waste_type_labels.get(waste_type_id, 'unknown')
-            date_map[day][waste_label] = count
-            date_map[day]["total"] += count
-    
-    # Chuyển từ dict sang list để trả về
-    result = [data for day, data in sorted(date_map.items())]
-    
-    return Response(result)
+    # Return direct array instead of paginated response
+    return Response(serializer.data)
